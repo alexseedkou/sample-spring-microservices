@@ -3,10 +3,16 @@
 [code language="java"]
 node {
 
+    environment {
+        registry = "alexseedkou/docker-test"
+        registryCredential = 'dockerhub'
+        dockerImage = ''
+    }
+
     withMaven(maven:'maven') {
 
         stage('Checkout') {
-            git url: 'https://github.com/piomin/sample-spring-microservices.git', credentialsId: 'github-piomin', branch: 'master'
+            git url: 'https://github.com/alexseedkou/sample-spring-microservices.git', credentialsId: 'alexseedkou', branch: 'master'
         }
 
         stage('Build') {
@@ -19,18 +25,24 @@ node {
 
         stage('Image') {
             dir ('account-service') {
-                def app = docker.build "localhost:5000/account-service:${env.version}"
-                app.push()
+                dockerImage = docker.build registry + "microservice:$BUILD_NUMBER"
+                // app.push()
             }
         }
 
-        stage ('Run') {
-            docker.image("localhost:5000/account-service:${env.version}").run('-p 2222:2222 -h account --name account --link discovery')
+        stage('Deploy Image') {
+            docker.withRegistry('', registryCredential) {
+                dockerImage.push();
+            }
         }
 
-        stage ('Final') {
-            build job: 'customer-service-pipeline', wait: false
-        }      
+        // stage ('Run') {
+        //     docker.image("localhost:5000/account-service:${env.version}").run('-p 2222:2222 -h account --name account --link discovery')
+        // }
+
+        // stage ('Final') {
+        //     build job: 'customer-service-pipeline', wait: false
+        // }      
 
     }
 
